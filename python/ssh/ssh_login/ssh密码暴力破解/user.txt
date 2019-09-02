@@ -1,0 +1,7 @@
+admin
+root
+a
+admins
+root
+msfadmin
+admin123
