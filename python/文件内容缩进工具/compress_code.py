@@ -1,7 +1,11 @@
 import getopt
 import sys
+import os
 
 def execute(file, encoding='utf-8'):
+	if not os.path.exists(file):
+		print("所选文件不存在！")
+		sys.exit(0)
 	with open("%s.min" % file, 'a', encoding=encoding) as f:
 		for line in open(file, 'r', encoding=encoding):
 			if line.endswith('\r\n'):
