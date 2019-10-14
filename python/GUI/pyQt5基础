@@ -1,0 +1,289 @@
+'''
+PyQt5模块：
+1. QtCore:包含核心的非GUI功能。
+2. QtGui:包含窗口、事件、图像等。
+3. QtWidgets:包含一系列桌面应用UI元素。
+
+
+.ui文件转换为.py文件：python -m PyQt5.uic.pyuic 01demo.ui -o demo1.py
+配置扩展工具参数：-m PyQt5.uic.pyuic $FileName$ -o $FileNameWithoutExtension$.py
+'''
+import sys
+import PyQt5
+from PyQt5.QtWidgets import QApplication,QWidget,QToolTip,QPushButton,QMessageBox,QLabel,QLineEdit,QHBoxLayout,QVBoxLayout,QGridLayout,QFrame,QCheckBox,QSlider,QProgressBar,QComboBox,QCalendarWidget,QMenu,QMenuBar,QMainWindow,QAction
+from PyQt5.QtCore import QCoreApplication,Qt,QBasicTimer,QDate
+from PyQt5.QtGui import QColor,QPixmap
+app = QApplication(sys.argv)
+# 创建一个窗口
+w = QWidget()
+# 设置窗口宽高
+w.resize(500, 300)
+# 设置窗口位置
+w.move(650, 300)
+# 设置窗口图标
+w.setWindowIcon(PyQt5.QtGui.QIcon('tubiao.ico'))
+# 设置标题
+w.setWindowTitle("窗口标题")
+# 设置窗口的提示框并设置字体
+QToolTip.setFont(PyQt5.QtGui.QFont('SansSerif', 20))
+w.setToolTip('这是一个窗口')
+# 设置按钮
+button1 = QPushButton('按钮1', w)
+# 设置按钮大小
+# button1.resize(100,100)
+# 使用系统计算推荐尺寸
+button1.resize(button1.sizeHint())
+# 设置按钮位置
+button1.move(100, 100)
+# 设置按钮提示框
+button1.setToolTip('这是按钮1')
+# 设置关闭按钮
+button_close = QPushButton('关闭', w)
+# 绑定关闭事件
+button_close.clicked.connect(QCoreApplication.instance().quit)
+# 创建水平盒布局
+hbox = QHBoxLayout()
+# 创建垂直盒布局
+vbox = QVBoxLayout()
+# 让关闭按钮始终在窗口右下角
+hbox.addStretch()
+hbox.addWidget(button_close)
+vbox.addStretch()
+vbox.addLayout(hbox)
+w.setLayout(vbox)
+
+# 创建网格布局(同一个窗口中一般使用一种布局)
+# 定义标签
+# label1 = QLabel("标签1")
+# # label1.move(40, 40) # 设置位置,这里位置用后面的网格布局设置
+# label2 = QLabel("标签2")
+# # 定义文本框
+# edit1 = QLineEdit()
+# edit2 = QLineEdit()
+# grid = QGridLayout()
+# # 设置单元格距离
+# grid.setSpacing(10)
+# grid.addWidget(label1, 1, 0) # 将标签1加入网格布局,并设置位置为第二行第一列(索引从0开始)
+# grid.addWidget(edit1, 1, 1)
+# grid.addWidget(label2, 2, 0)
+# grid.addWidget(edit2, 2, 1)
+# w.setLayout(grid)
+
+# 设置按钮控件
+# 先定义点击触发的方法
+def setBgColor():
+    # 获取当前元素控件
+    source = w.sender()
+    w.setObjectName("MainWindow")
+    if source.text() == "黑色":
+        w.setStyleSheet('#MainWindow{background-color:black}')
+    elif source.text() == "白色":
+        w.setStyleSheet('#MainWindow{background-color:white}')
+
+blackButton = QPushButton('黑色', w)
+blackButton.move(200, 200)
+blackButton.setCheckable(True)
+blackButton.clicked[bool].connect(setBgColor)
+whiteButton = QPushButton('白色', w)
+whiteButton.move(300, 200)
+whiteButton.setCheckable(True)
+whiteButton.clicked.connect(setBgColor)
+
+# 自定义一个窗口类
+class MyQWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.initUI()
+
+    # 定义一些初始化属性
+    def initUI(self):
+        self.resize(1000, 600)
+        # 设置窗口不可拖动大小
+        self.setMinimumSize(1000, 600)
+        self.setMaximumSize(1000, 600)
+
+        self.setWindowTitle("自定义新窗口")
+        # 设置窗口居中(我这里喜欢上下设置的偏上一点)
+        desktop = app.desktop()
+        self.move((desktop.width() - self.width())/2, (desktop.height() - self.height())/4)
+        # self.show() # 开启后默认显示
+
+        # 设置显示图像,代码写上面可以当作背景
+        # 创建水平盒布局
+        hbox = QHBoxLayout()
+        pixmap = QPixmap('img/bg.jpg')
+        bglbl = QLabel(self)
+        bglbl.setPixmap(pixmap)
+        hbox.addWidget(bglbl)
+        self.setLayout(hbox)
+
+        # 定义复选框
+        cb = QCheckBox('请选择', self)
+        cb.move(20, 20)
+        cb.stateChanged.connect(self.selectCheckBox)
+        # 定义一个标签
+        check_label = QLabel("未选中", self)
+        check_label.setObjectName('check_label')
+        check_label.setFont(PyQt5.QtGui.QFont('SansSerif', 10))
+        check_label.move(100, 20)
+
+        # 定义一个滑块
+        slider = QSlider(Qt.Horizontal, self)
+        slider.setMinimum(10)
+        slider.setMaximum(500)
+        slider.setGeometry(30,60,100,30)
+        slider.valueChanged[int].connect(self.changeValue)
+        # 为滑块定义一个标签
+        self.slider_label = QLabel('10', self)
+        self.slider_label.move(170, 60)
+        self.slider_label.resize(30,30)
+
+        # 定义一个进度条
+        self.pbar = QProgressBar(self)
+        self.pbar.setGeometry(30, 140, 300, 25)
+        # 为进度条创建一个按钮
+        self.pbtn = QPushButton('开始', self)
+        self.pbtn.move(330, 139)
+        self.pbtn.clicked.connect(self.doAction)
+        # 定义时间控件
+        self.timer = QBasicTimer()
+        self.timeVal = 0
+
+        # 定义下拉列表
+        combo = QComboBox(self)
+        combo.addItem('选项1')
+        combo.addItem('选项2')
+        combo.addItem('选项3')
+        combo.addItem('选项4')
+        combo.setCurrentIndex(0) # 设置默认
+        combo.move(100, 200)
+        combo.activated[str].connect(self.onActivated)
+
+    # 定义下拉列表方法
+    def onActivated(self, text):
+        qmb = QMessageBox()
+        qmb.about(self, '消息', text)
+
+
+    # 时间控件方法
+    def timerEvent(self, e):
+        if self.timeVal >= 100:
+            self.timer.stop()
+            self.pbtn.setText('重新开始')
+            return
+        self.timeVal += 1
+        self.pbar.setValue(self.timeVal)
+
+    # 点击进度条按钮事件
+    def doAction(self):
+        if self.timer.isActive():
+            self.timer.stop()
+            self.pbtn.setText('开始')
+        else:
+            if self.timeVal >= 100:
+                self.timeVal = 0
+            self.timer.start(100, self)
+            self.pbtn.setText('停止')
+
+    # 滑块方法
+    def changeValue(self, value):
+        self.slider_label.setText(str(value))
+
+
+    # 重写关闭事件
+    def closeEvent(self, QCloseEvent):
+        print(QCloseEvent)
+        # 设置询问对话框
+        reply = QMessageBox.question(self, "消息", "您确定要退出吗？",
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+        if reply == QMessageBox.Yes:
+            QCloseEvent.accept()
+        else:
+            QCloseEvent.ignore()
+
+    # 定义复选框选中方法
+    def selectCheckBox(self, state):
+        check_label = self.findChild(QLabel, 'check_label')
+        if state == Qt.Checked:
+            check_label.setText('已选中')
+        else:
+            check_label.setText('未选中')
+
+# 创建一个日期选择窗口
+class CalendarWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.initUI()
+
+    # 定义一些初始化属性
+    def initUI(self):
+        # 设置窗口宽高
+        self.resize(300, 200)
+        # 设置窗口位置
+        self.move(650, 300)
+        # 设置标题
+        self.setWindowTitle("选择日期")
+        vbox = QVBoxLayout(self)
+        cal = QCalendarWidget(self)
+        cal.setGridVisible(True)
+        cal.clicked[QDate].connect(self.showDate)
+        vbox.addWidget(cal)
+        # 获取日期
+        date = cal.selectedDate()
+        # 创建标签接收日期
+        self.labl = QLabel(self)
+        self.labl.setText(date.toString())
+        self.setLayout(vbox)
+
+    # 定义日期选择方法
+    def showDate(self, date):
+        self.labl.setText(date.toString())
+
+# 创建一个有菜单的窗口
+class MenuWin(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.initUI()
+    def initUI(self):
+
+        menubar = self.menuBar()
+        fileMenu = menubar.addMenu('文件')
+        newAction = QAction('新建', self)
+        importMenu = QMenu('导入', self)
+        importAction1 = QAction('从PDF导入', self)
+        importAction2 = QAction('从Word导入', self)
+        importAction1.triggered.connect(self.actionHandler1)
+        importAction2.triggered.connect(self.actionHandler2)
+        importMenu.addAction(importAction1)
+        importMenu.addAction(importAction2)
+        fileMenu.addAction(newAction)
+        fileMenu.addMenu(importMenu)
+        menubar.setNativeMenuBar(False) # 使所有操作系统菜单风格统一
+        self.setWindowFlags(Qt.WindowStaysOnTopHint) # 设置窗口始终在顶端
+        self.setGeometry(300, 300, 300, 200)
+        self.setWindowTitle('菜单')
+
+    def actionHandler1(self):
+        print('1111')
+    def actionHandler2(self):
+        print('2222')
+
+
+
+# 创建一个自定义窗口
+mw = MyQWidget()
+
+# 显示主窗口
+# w.show()
+# 显示自定义窗口
+mw.show()
+
+# 日历
+# cw = CalendarWidget()
+# cw.show()
+
+# 菜单窗口
+# mw = MenuWin()
+# mw.show()
+
+sys.exit(app.exec_())
