@@ -67,6 +67,12 @@ elif res.status_code == 200:
 
 print('分割线#########################################################################################################')
 
+# form-data方式发送
+payload = {
+    "passwd": (None, "echo 123;"),
+}
+res = requests.post("http://127.0.0.1/1.php", files=payload, headers=headers)
+
 '''关于cookie'''
 cookies = res.cookies
 print(cookies)
