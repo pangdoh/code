@@ -18,6 +18,9 @@ res = requests.get("http://www.baidu.com/s",params=data) #参数可以这样写
 
 '''在python2中，有些站可能需要加verify=false跳过证书验证'''
 
+# 禁止重定向跟随
+res = requests.get(url, allow_redirects=False)
+
 print('分割线#########################################################################################################')
 
 # 请求头设置
@@ -115,8 +118,14 @@ proxy = random.choice(proxy_list)
 print('分割线#########################################################################################################')
 '''
 
+# 方式二（配置整个会话，并设置密码）
+session = requests.session()
+session.proxies = {'http': 'socks5://192.168.3.58:9050',
+                   'https': 'socks5://192.168.3.58:9050'}
+resp = session.get('https://api.github.com', auth=('user', 'pass'))
 
 #外还有一种设置方式，和 Urllib 中的方法相同，使用 socks 模块，也需要像上文一样安装该库，设置方法如下
+# pip install PySocks
 import requests
 import socks
 import socket
@@ -137,7 +146,7 @@ try:
     res = requests.get("https://ipinfo.io",timeout=0.5)
     print("status_code:%d" % res.status_code)
 except ReadTimeout:
-    print("tomeout")
+    print("timeout")
 except ConnectionError as e:
     print(ConnectionError)
     print(e)
