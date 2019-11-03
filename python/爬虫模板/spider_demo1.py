@@ -130,7 +130,7 @@ import requests
 import socks
 import socket
 
-socks.set_default_proxy(socks.SOCKS5, '39.106.153.182', 1080)
+socks.set_default_proxy(socks.SOCKS5, '2.2.2.2', 1080)
 socket.socket = socks.socksocket
 try:
     res = requests.get("https://ipinfo.io")
