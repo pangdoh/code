@@ -62,6 +62,8 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
     # 构造http请求
     if method.upper() == 'POST':
         send_data = "POST %s" % path
+        if not headers.get('Content-Type'):
+            headers['Content-Type'] = 'application/x-www-form-urlencoded'
     else:
         send_data = "GET %s" % path
     send_data += " HTTP/1.1"
@@ -71,12 +73,15 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
         send_data += "\r\n"
     send_data += "\r\n"
     if method.upper() == 'POST' and data:
-        send_data += data
-        send_data += "\r\n"
-        send_data += "\r\n"
+        if len(data) > 0:
+            for key, value in data.items():
+                send_data += "%s=%s&" % (key, value)
 
-    # print("发送请求：\r\n%s" % send_data)
-    # print('------------------------------------------------------------')
+            if send_data.endswith('&'):
+                send_data = send_data[:len(send_data) - 1]
+
+    print("发送请求：\r\n%s" % send_data)
+    print('------------------------------------------------------------')
     s.send(send_data.encode(encode))
     read_bytes = bytes()
     while True:
@@ -110,13 +115,18 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
 
         # 响应内容
         response.content = read_bytes[read_bytes.find(b'\r\n\r\n') + 4:]
-        response.content = response.content[response.content.find(b'\r\n') + 2:response.content.find(b'\r\n\r\n0')]
-
-        # 响应内容编码后
-        response.text = response.content.decode(encode)
+        if len(response.content) > 16 and response.content[: 16].upper().find(b'\r\n<!DOCTYPE') != -1:
+            response.content = response.content[response.content.find(b'\r\n') + 2:]
+        if response.content.endswith(b'\r\n\r\n0\r\n\r\n'):
+            content_end_index = response.content.find(b'\r\n\r\n0\r\n\r\n')
+            response.content = response.content[:content_end_index]
 
         # 响应set-cookie
         response.cookies = response.headers.get('Set-Cookie')
+
+        # 响应内容编码后
+        if response.headers.get('Content-Type') and response.headers.get('Content-Type').find('html') != -1:
+            response.text = response.content.decode(encode)
 
         # 设置重定向自动跟随
         if allow_redirects:
@@ -180,14 +190,13 @@ class Response:
     text = None
     cookies = None
 
+
 if __name__ == '__main__':
-    url = "https://www.baidu.com"
-    # url = 'http://hhtqp7dzcon3ibrt4tonh6mpc3ftve5dwmideorzkyutzxbx6fcgdeid.onion/'
-    # url = 'http://msydqstlz2kzerdg.onion/search/'
-    # proxies = '192.168.3.69:9011'
+    # url = "https://www.baidu.com"
+    url = 'http://msydqstlz2kzerdg.onion/search/'
+    proxies = '192.168.3.69:9011'
     # proxies = '192.168.0.104:1080'
-    proxies = None
-    res = get(url, allow_redirects=True, proxies=proxies)
+    res = get(url, allow_redirects=True, timeout=10, proxies=proxies)
     print(res.headers)
     print(res.status_code)
     print(res.content)
