@@ -153,3 +153,25 @@ except ConnectionError as e:
 except RequestException as e:
     print(RequestException)
     print(e)
+
+
+# 解析url
+from urllib import parse
+def parse_urls(url):
+    proto = 80
+    up = parse.urlparse(url)
+    if up.scheme != "":
+        proto = up.scheme
+    dst = up.netloc.split(":")
+    if len(dst) == 2:
+        port = int(dst[1])
+    else:
+        if proto == "http":
+            port = 80
+        elif proto == "https":
+            port = 443
+    host = dst[0]
+    path = up.path
+    if path is None or path == '':
+        path = '/'
+    return proto, host, port, path
