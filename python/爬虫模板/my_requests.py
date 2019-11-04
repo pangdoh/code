@@ -59,6 +59,10 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
             'Accept-Language': 'zh-CN,zh;q=0.9',
         }
 
+    # 提升访问速度
+    # if headers.get('Connection'):
+    #     headers['Connection'] = 'close'
+
     # 构造http请求
     if method.upper() == 'POST':
         send_data = "POST %s" % path
@@ -80,17 +84,15 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
             if send_data.endswith('&'):
                 send_data = send_data[:len(send_data) - 1]
 
-    print("发送请求：\r\n%s" % send_data)
-    print('------------------------------------------------------------')
     s.send(send_data.encode(encode))
     read_bytes = bytes()
     while True:
-        receive_data = s.recv(512)
+        receive_data = s.recv(70)
         if not receive_data:
             break
         else:
             read_bytes += receive_data
-            if receive_data.endswith(b"0\r\n\r\n"):
+            if len(receive_data) < 70:
                 break
 
     # 封装响应信息
@@ -192,10 +194,10 @@ class Response:
 
 
 if __name__ == '__main__':
-    # url = "https://www.baidu.com"
-    url = 'http://msydqstlz2kzerdg.onion/search/'
+    url = "https://www.baidu.com"
+    # url = 'http://msydqstlz2kzerdg.onion/search/'
     proxies = '192.168.3.69:9011'
-    # proxies = '192.168.0.104:1080'
+    # proxies = '192.168.3.69:1080'
     res = get(url, allow_redirects=True, timeout=10, proxies=proxies)
     print(res.headers)
     print(res.status_code)
