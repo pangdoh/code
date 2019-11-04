@@ -60,8 +60,8 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
         }
 
     # 提升访问速度
-    # if headers.get('Connection'):
-    #     headers['Connection'] = 'close'
+    if headers.get('Connection'):
+        headers['Connection'] = 'close'
 
     # 构造http请求
     if method.upper() == 'POST':
@@ -86,14 +86,19 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
 
     s.send(send_data.encode(encode))
     read_bytes = bytes()
+
     while True:
-        receive_data = s.recv(70)
+        receive_data = s.recv(512)
         if not receive_data:
             break
         else:
             read_bytes += receive_data
-            if len(receive_data) < 70:
+            if read_bytes.find(b'\r\n\r\n0\r\n\r\n') != -1:
                 break
+            else:
+                if len(receive_data) < 512:
+                    # break
+                    pass
 
     # 封装响应信息
     response = Response()
@@ -191,6 +196,7 @@ class Response:
     content = None
     text = None
     cookies = None
+
 
 
 if __name__ == '__main__':
