@@ -54,20 +54,31 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
             'Host': host,
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/232.36 (KHTML, like Gecko) Chrome/60.0.3412.39 Safari/312.30',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/114.86 (KHTML, like Gecko) Chrome/63.0.4341.21 Safari/352.10',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
             'Accept-Language': 'zh-CN,zh;q=0.9',
         }
 
-    # 提升访问速度
-    if headers.get('Connection'):
-        headers['Connection'] = 'close'
-
     # 构造http请求
     if method.upper() == 'POST':
+        post_data = ""
+        for key, value in data.items():
+            post_data += "%s=%s&" % (key, value)
+        if post_data.endswith('&'):
+            post_data = post_data[:len(post_data) - 1]
+
         send_data = "POST %s" % path
+
         if not headers.get('Content-Type'):
             headers['Content-Type'] = 'application/x-www-form-urlencoded'
+
+        if not headers.get('Content-Length'):
+            if len(data) > 0:
+                data_length = len(post_data)
+            else:
+                data_length = 0
+            headers['Content-Length'] = str(data_length)
+
     else:
         send_data = "GET %s" % path
     send_data += " HTTP/1.1"
@@ -76,46 +87,48 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
         send_data += "%s: %s" % (key, value)
         send_data += "\r\n"
     send_data += "\r\n"
-    if method.upper() == 'POST' and data:
-        if len(data) > 0:
-            for key, value in data.items():
-                send_data += "%s=%s&" % (key, value)
-
-            if send_data.endswith('&'):
-                send_data = send_data[:len(send_data) - 1]
+    if method.upper() == 'POST':
+        send_data += post_data
 
     s.send(send_data.encode(encode))
     read_bytes = bytes()
 
+    # 定义响应信息容器
+    response = Response()
+
+    # 开始接收响应数据
     while True:
-        receive_data = s.recv(512)
+        receive_data = s.recv(1024)
         if not receive_data:
             break
         else:
             read_bytes += receive_data
-            if read_bytes.find(b'\r\n\r\n0\r\n\r\n') != -1:
+            # 封装响应头
+            if not response.headers:
+                if read_bytes.find(b'\r\n\r\n') != -1:
+                    response.headers = read_bytes[:read_bytes.find(b'\r\n\r\n')].decode(encode)
+                    attr_lines = response.headers.split("\r\n")
+                    response.headers = {}
+                    for attr_lien in attr_lines:
+                        attrs = attr_lien.split(":")
+                        if len(attrs) == 2:
+                            key = attrs[0]
+                            val = attrs[1]
+                            if val.startswith(" "):
+                                val = val[1:]
+                            response.headers[key] = val
+
+            # 接收到尾端跳出
+            if response.headers and response.headers.get('Content-Length'):
+                content_length = int(response.headers.get('Content-Length'))
+                if len(read_bytes[read_bytes.find(b'\r\n\r\n') + 4:]) >= content_length:
+                    break
+            elif read_bytes.find(b'\r\n\r\n0\r\n\r\n') != -1:
                 break
-            else:
-                if len(receive_data) < 512:
-                    # break
-                    pass
+            elif len(receive_data) == 0:
+                break
 
-    # 封装响应信息
-    response = Response()
     try:
-        # 响应头
-        response.headers = read_bytes[:read_bytes.find(b'\r\n\r\n')].decode(encode)
-        attr_lines = response.headers.split("\r\n")
-        response.headers = {}
-        for attr_lien in attr_lines:
-            attrs = attr_lien.split(":")
-            if len(attrs) == 2:
-                key = attrs[0]
-                val = attrs[1]
-                if val.startswith(" "):
-                    val = val[1:]
-                response.headers[key] = val
-
         # 状态码
         response.status_code = read_bytes[:read_bytes.find(b'\r\n\r\n')].decode(encode)
         response.status_code = response.status_code[response.status_code.find(' ') + 1:response.status_code.find(' ') + 4]
@@ -198,14 +211,22 @@ class Response:
     cookies = None
 
 
-
 if __name__ == '__main__':
     url = "https://www.baidu.com"
     # url = 'http://msydqstlz2kzerdg.onion/search/'
-    proxies = '192.168.3.69:9011'
-    # proxies = '192.168.3.69:1080'
-    res = get(url, allow_redirects=True, timeout=10, proxies=proxies)
+
+    proxies = '192.168.1.131:9050'
+    # proxies = '192.168.1.131:1080'
+    # proxies = None
+
+    data = {
+        'p1': 'abc',
+        'p2': '123',
+    }
+    res = get(url, allow_redirects=False, timeout=10, proxies=proxies)
+    # res = post(url, data=data, timeout=10, proxies=proxies)
     print(res.headers)
     print(res.status_code)
     print(res.content)
+    print(res.text)
     print(res.cookies)
