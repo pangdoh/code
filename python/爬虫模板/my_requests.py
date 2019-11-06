@@ -52,7 +52,7 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
     if not headers:
         headers = {
             'Host': host,
-            'Connection': 'keep-alive',
+            'Connection': 'close',
             'Upgrade-Insecure-Requests': '1',
             'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/114.86 (KHTML, like Gecko) Chrome/63.0.4341.21 Safari/352.10',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
@@ -123,7 +123,7 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
                 content_length = int(response.headers.get('Content-Length'))
                 if len(read_bytes[read_bytes.find(b'\r\n\r\n') + 4:]) >= content_length:
                     break
-            elif read_bytes.find(b'\r\n\r\n0\r\n\r\n') != -1:
+            elif read_bytes.endswith(b'\r\n0\r\n\r\n') or read_bytes.endswith(b'\r\n0\r\n\r\n\r\n'):
                 break
             elif len(receive_data) == 0:
                 break
@@ -137,9 +137,10 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
         response.content = read_bytes[read_bytes.find(b'\r\n\r\n') + 4:]
         if len(response.content) > 16 and response.content[: 16].upper().find(b'\r\n<!DOCTYPE') != -1:
             response.content = response.content[response.content.find(b'\r\n') + 2:]
-        if response.content.endswith(b'\r\n\r\n0\r\n\r\n'):
-            content_end_index = response.content.find(b'\r\n\r\n0\r\n\r\n')
-            response.content = response.content[:content_end_index]
+        if response.content.endswith(b'\r\n0\r\n\r\n'):
+            response.content = response.content[:len(response.content) - 7]
+        elif response.content.endswith(b'\r\n0\r\n\r\n\r\n'):
+            response.content = response.content[:len(response.content) - 9]
 
         # 响应set-cookie
         response.cookies = response.headers.get('Set-Cookie')
@@ -223,10 +224,11 @@ if __name__ == '__main__':
         'p1': 'abc',
         'p2': '123',
     }
-    res = get(url, allow_redirects=False, timeout=10, proxies=proxies)
+    url = 'http://5u56fjmxu63xcmbk.onion/'
+    res = get(url, timeout=60, proxies=proxies)
     # res = post(url, data=data, timeout=10, proxies=proxies)
     print(res.headers)
     print(res.status_code)
     print(res.content)
-    print(res.text)
+    # print(res.text)
     print(res.cookies)
