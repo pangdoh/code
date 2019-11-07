@@ -26,7 +26,7 @@ def parse_urls(url):
 
 
 # 发送接收
-def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeout=10, proxies=None, encode='utf-8'):
+def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeout=None, proxies=None, encode='utf-8'):
     # 解析url
     proto, host, port, path = parse_urls(url)
 
@@ -42,7 +42,10 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     elif proto == "https":
         s = ssl.wrap_socket(socket.socket())
-    s.settimeout(timeout)
+
+    if timeout:
+        s.settimeout(timeout)
+
     try:
         s.connect((host, port))
     except Exception as e:
@@ -151,42 +154,38 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
 
         # 设置重定向自动跟随
         if allow_redirects:
-            if response.status_code == '302':
-                location = response.headers.get('location')
-                print("302, location:", location)
-                count_n = 0
-                while location:
-                    count_n += 1
-                    if count_n > 5:
-                        print('重定向循环超过5次！已退出')
-                        break
-                    if location.startswith('http'):
-                        http_url = location
-                    else:
-                        proto, host, port, path = parse_urls(url)
-                        while True:
-                            if location.startswith("../"):
-                                if path.endswith("/"):
-                                    path = path[:len(path) - 1]
-                                path = path[:path.rfind("/")]
-                                location = location[3:]
-                            else:
-                                break
-                        if location.startswith("/"):
-                            path = "/"
-                        if not path.startswith("/"):
-                            path = "/%s" % path
-                        if not location.startswith("/"):
-                            location = "/%s" % location
-                        if location.startswith("/") and path.endswith("/"):
-                            location = location[1:]
+            count_n = 0
+            while response.status_code == '302' and response.headers.get('location'):
+                count_n += 1
+                if count_n > 5:
+                    print('重定向循环超过5次！已退出')
+                    break
+                if location.startswith('http'):
+                    http_url = location
+                else:
+                    proto, host, port, path = parse_urls(url)
+                    while True:
+                        if location.startswith("../"):
+                            if path.endswith("/"):
+                                path = path[:len(path) - 1]
+                            path = path[:path.rfind("/")]
+                            location = location[3:]
+                        else:
+                            break
+                    if location.startswith("/"):
+                        path = "/"
+                    if not path.startswith("/"):
+                        path = "/%s" % path
+                    if not location.startswith("/"):
+                        location = "/%s" % location
+                    if location.startswith("/") and path.endswith("/"):
+                        location = location[1:]
 
-                        http_url = "%s://%s:%s%s%s" % (proto, host, port, path, location)
-                    proto, host, port, path = parse_urls(http_url)
-                    if headers:
-                        headers['Host'] = host
-                    response = send(http_url, data=data, method=method, allow_redirects=allow_redirects, headers=headers, timeout=timeout, proxies=proxies, encode=encode)
-                    location = response.headers.get('location')
+                    http_url = "%s://%s:%s%s%s" % (proto, host, port, path, location)
+                proto, host, port, path = parse_urls(http_url)
+                if headers:
+                    headers['Host'] = host
+                response = send(http_url, data=data, method=method, allow_redirects=allow_redirects, headers=headers, timeout=timeout, proxies=proxies, encode=encode)
 
     except Exception as e:
         print(e)
@@ -224,6 +223,7 @@ if __name__ == '__main__':
         'p1': 'abc',
         'p2': '123',
     }
+
     url = 'http://5u56fjmxu63xcmbk.onion/'
     res = get(url, timeout=60, proxies=proxies)
     # res = post(url, data=data, timeout=10, proxies=proxies)
