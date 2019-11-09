@@ -188,7 +188,7 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
                 response = send(http_url, data=data, method=method, allow_redirects=allow_redirects, headers=headers, timeout=timeout, proxies=proxies, encode=encode)
 
     except Exception as e:
-        print(e)
+        raise RuntimeError(e)
 
     return response
 
