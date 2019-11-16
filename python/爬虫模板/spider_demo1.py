@@ -154,6 +154,9 @@ except RequestException as e:
     print(RequestException)
     print(e)
 
+# 构造http协议的时间格式
+date = time.strftime('%a, %d %b %Y %X GMT', time.localtime(time.time()))
+
 
 # 解析url
 from urllib import parse
