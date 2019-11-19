@@ -1,7 +1,9 @@
 import getopt
 import sys
 import os
-''' 把代码压缩成Payload '''
+
+
+# 把代码压缩成Payload
 def execute(file, list1, encoding='utf-8'):
 	if not os.path.exists(file):
 		print("所选文件不存在！")
@@ -14,8 +16,11 @@ def execute(file, list1, encoding='utf-8'):
 				line = line[:len(line) - 1]
 			if line.strip().startswith("#") or line.strip().startswith("//"):
 				continue
+			if "-p" in list1:
+				if line.strip().startswith("print"):
+					continue
 			line = check_note(line)
-			# uri编码转换
+			# 规则字符串转换
 			if "-z" in list1:
 				line = line.replace("+", "%2b")
 			if "-x" in list1:
@@ -25,8 +30,10 @@ def execute(file, list1, encoding='utf-8'):
 			f.write("%s " % line)
 		print("生成文件：%s" % "%s.min" % file)
 
+
 def check_note(line):
 	return check_note_e(check_note_e(line, "//"), "#")
+
 
 def check_note_e(line, reg, start=None):
 	if not start:
@@ -48,13 +55,14 @@ def check_note_e(line, reg, start=None):
 
 	return line
 
+
 if __name__ == '__main__':
-	help_ = "参数：'-f' 或 '--file=' 指定文件，'-e' 或 '--encoding=' 指定编码方式，默认编码为utf-8。\r\n-z 将+转换成%2b， -x 将\\转换成\\\\， -c 将\"转换为\\\"。"
+	help_ = "参数：'-f' 或 '--file=' 指定文件，'-e' 或 '--encoding=' 指定编码方式，默认编码为utf-8。\r\n-p 将print为首的行去掉， -z 将+转换成%2b， -x 将\\转换成\\\\， -c 将\"转换为\\\"。"
 	file = None
 	encoding = "utf-8"
 
 	try:
-		options, args = getopt.getopt(sys.argv[1:], 'hf:e:zxc', ["help", "file=", "encoding="])
+		options, args = getopt.getopt(sys.argv[1:], 'hf:e:pzxc', ["help", "file=", "encoding="])
 	except getopt.GetoptError:
 		sys.exit(0)
 	list1 = []
@@ -66,7 +74,7 @@ if __name__ == '__main__':
 			file = value
 		if name in ("-e", "--encoding"):
 			encoding = value
-		if name in ("-z", "-x", "-c"):
+		if name in ("-p", "-z", "-x", "-c"):
 			list1.append(name)
 
 	# 校验参数
