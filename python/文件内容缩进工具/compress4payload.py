@@ -15,8 +15,9 @@ def execute(file, list1, encoding='utf-8'):
 				line = line[:len(line) - 2]
 			elif line.endswith('\n'):
 				line = line[:len(line) - 1]
-			if line.strip().startswith("#") or line.strip().startswith("//"):
-				continue
+			else:
+				if line.strip().startswith("#") or line.strip().startswith("//"):
+					continue
 			if "-p" in list1:
 				if line.strip().startswith("print"):
 					continue
@@ -28,6 +29,11 @@ def execute(file, list1, encoding='utf-8'):
 				line = line.replace("\\", "\\\\")
 			if "-c" in list1:
 				line = line.replace("\"", "\\\"")
+			if "-v" in list1:
+				if line.strip().startswith("'"):
+					continue
+				line = line.replace('"', '\\"\\"')
+				# line = line.replace('"', '""')
 			f.write("%s " % line)
 		print("生成文件：%s" % "%s.min" % file)
 
@@ -63,7 +69,7 @@ if __name__ == '__main__':
 	encoding = "utf-8"
 
 	try:
-		options, args = getopt.getopt(sys.argv[1:], 'hf:e:pzxc', ["help", "file=", "encoding="])
+		options, args = getopt.getopt(sys.argv[1:], 'hf:e:pzxcv', ["help", "file=", "encoding="])
 	except getopt.GetoptError:
 		sys.exit(0)
 	list1 = []
@@ -75,7 +81,7 @@ if __name__ == '__main__':
 			file = value
 		if name in ("-e", "--encoding"):
 			encoding = value
-		if name in ("-p", "-z", "-x", "-c"):
+		if name in ("-p", "-z", "-x", "-c", "-v"):
 			list1.append(name)
 
 	# 校验参数

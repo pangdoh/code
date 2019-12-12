@@ -22,6 +22,9 @@ End If
 End Function
 
 '类型转换
+'作 用：将获取的源码转换为中文
+'参 数：Body ------要转换的变量
+'参 数：Cset ------要转换的类型
 Function BytesToBstr(Body,Cset)
 Dim Objstream
 Set Objstream = Server.CreateObject("adodb.stream")
