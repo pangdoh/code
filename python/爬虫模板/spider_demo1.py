@@ -161,7 +161,7 @@ date = time.strftime('%a, %d %b %Y %X GMT', time.localtime(time.time()))
 # 解析url
 from urllib import parse
 def parse_urls(url):
-    proto = 80
+    proto = 'http'
     up = parse.urlparse(url)
     if up.scheme != "":
         proto = up.scheme
@@ -175,6 +175,7 @@ def parse_urls(url):
             port = 443
     host = dst[0]
     path = up.path
+    query = up.query
     if path is None or path == '':
         path = '/'
-    return proto, host, port, path
+    return proto, host, port, path, query

@@ -6,7 +6,7 @@ import socket
 
 # 解析url
 def parse_urls(url):
-    proto = 80
+    proto = 'http'
     up = parse.urlparse(url)
     if up.scheme != "":
         proto = up.scheme
@@ -20,9 +20,10 @@ def parse_urls(url):
             port = 443
     host = dst[0]
     path = up.path
+    query = up.query
     if path is None or path == '':
         path = '/'
-    return proto, host, port, path
+    return proto, host, port, path, query
 
 
 # 发送接收
@@ -163,7 +164,7 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
                 if location.startswith('http'):
                     http_url = location
                 else:
-                    proto, host, port, path = parse_urls(url)
+                    proto, host, port, path, query = parse_urls(url)
                     while True:
                         if location.startswith("../"):
                             if path.endswith("/"):
@@ -182,7 +183,7 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
                         location = location[1:]
 
                     http_url = "%s://%s:%s%s%s" % (proto, host, port, path, location)
-                proto, host, port, path = parse_urls(http_url)
+                proto, host, port, path, query = parse_urls(http_url)
                 if headers:
                     headers['Host'] = host
                 response = send(http_url, data=data, method=method, allow_redirects=allow_redirects, headers=headers, timeout=timeout, proxies=proxies, encode=encode)
