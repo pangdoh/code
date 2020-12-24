@@ -1,12 +1,18 @@
 import ssl
 from urllib import parse
+from bs4 import BeautifulSoup
 import socks
 import socket
 import gzip
+import io
 
 
-# 解析url
 def parse_urls(url):
+    """
+    解析url
+    :param url:
+    :return: 1.协议，2.域名，3.端口，4.路径，5.参数
+    """
     proto = 'http'
     up = parse.urlparse(url)
     if up.scheme != "":
@@ -19,6 +25,9 @@ def parse_urls(url):
             port = 80
         elif proto == "https":
             port = 443
+        else:
+            assert False, 'Protocol not supported'
+
     host = dst[0]
     path = up.path
     query = up.query
@@ -27,8 +36,21 @@ def parse_urls(url):
     return proto, host, port, path, query
 
 
-# 发送接收
-def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeout=None, proxies=None, encode='utf-8'):
+def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeout=None, proxies=None, encode='utf-8',
+         auto_encode=True):
+    """
+    核心方法，用来发送网络请求，处理封装相关数据
+    :param url: 请求的url
+    :param data: 请求参数
+    :param method: 请求方式（GET,POST）
+    :param allow_redirects: 重定向自动跟随，默认True
+    :param headers: 请求头，字典类型
+    :param timeout: 超时时间，秒
+    :param proxies: 代理
+    :param encode: 解码方式
+    :param auto_encode: 是否自动识别页面解码方式，默认True
+    :return: Response
+    """
     # 解析url
     proto, host, port, path, query = parse_urls(url)
 
@@ -44,6 +66,8 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     elif proto == "https":
         s = ssl.wrap_socket(socket.socket())
+    else:
+        assert False, 'Protocol not supported'
 
     if timeout:
         s.settimeout(timeout)
@@ -59,7 +83,8 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
             'Host': host,
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/114.86 (KHTML, like Gecko) Chrome/63.0.4341.21 Safari/352.10',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/114.86 (KHTML, like Gecko) \
+            Chrome/63.0.4341.21 Safari/352.10',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
             'Accept-Language': 'zh-CN,zh;q=0.9',
             'Accept-Encoding': 'gzip, deflate',
@@ -84,8 +109,10 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
             else:
                 data_length = 0
             headers['Content-Length'] = str(data_length)
-    else:
+    elif method.upper() == 'GET':
         send_data = "GET %s" % path
+    else:
+        raise ValueError('暂不支持该请求方式:', method)
 
     send_data += " HTTP/1.1"
     send_data += "\r\n"
@@ -104,7 +131,7 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
 
     # 开始接收响应数据
     while True:
-        receive_data = s.recv(1024)
+        receive_data = s.recv(4096)
         if not receive_data:
             break
         else:
@@ -123,47 +150,76 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
                             if val.startswith(" "):
                                 val = val[1:]
                             response.headers[key] = val
-
             # 接收到尾端跳出
             if response.headers and response.headers.get('Content-Length'):
                 content_length = int(response.headers.get('Content-Length'))
-                if len(read_bytes[read_bytes.find(b'\r\n\r\n') + 4:]) >= content_length:
+                if len(read_bytes[read_bytes.find(b'\r\n\r\n')+4:]) >= content_length:
+                    # 封装响应体
+                    response.content = read_bytes[read_bytes.find(b'\r\n\r\n') + 4:]
                     break
-            elif read_bytes.endswith(b'\r\n0\r\n\r\n') or read_bytes.endswith(b'\r\n0\r\n\r\n\r\n'):
-                break
             elif len(receive_data) == 0:
                 break
-
+            else:
+                # 处理分块传输方式
+                over_flag = False
+                if read_bytes.find(b'\r\n\r\n') != -1:
+                    res_body = read_bytes[read_bytes.find(b'\r\n\r\n')+4:]
+                    block_n = 0
+                    prior_end_index = -2
+                    temp_res_body = b''
+                    while True:
+                        block_n += 1
+                        if prior_end_index + 2 >= len(res_body):
+                            # 当前块还未接收完全
+                            break
+                        temp_content = res_body[prior_end_index+2:]
+                        temp_start_index = temp_content.find(b'\r\n') + 2  # 临时开头索引
+                        block_n_start_index = temp_start_index + prior_end_index + 2  # 当前块数据开头索引（包含）
+                        block_n_length_hex = temp_content[:temp_start_index - 2]  # 当前块数据长度(十六进制)
+                        block_n_length = int(block_n_length_hex, 16)  # 当前块数据长度(十进制)
+                        # print("第" + str(block_n) + "块长度：", block_n_length)
+                        if block_n_length > 0:
+                            block_n_end_index = block_n_start_index + block_n_length  # 当前块数据结束索引（不包含）
+                            if len(res_body) < block_n_end_index:
+                                # 当前块还未接收完全
+                                break
+                            block_n_content = res_body[block_n_start_index:block_n_end_index]
+                            # print("第" + str(block_n) + "块内容：", block_n_content)
+                            prior_end_index = block_n_end_index
+                            temp_res_body += block_n_content
+                        else:
+                            # 封装响应体
+                            response.content = temp_res_body
+                            over_flag = True
+                            break
+                if over_flag:
+                    break
     try:
         # 状态码
         response.status_code = read_bytes[:read_bytes.find(b'\r\n\r\n')].decode(encode)
-        response.status_code = response.status_code[response.status_code.find(' ') + 1:response.status_code.find(' ') + 4]
+        response.status_code = response.status_code[response.status_code.find(' ')+1:response.status_code.find(' ')+4]
 
-        # 响应内容
-        response.content = read_bytes[read_bytes.find(b'\r\n\r\n') + 4:]
         # 是否需要解压缩
         if response.headers.get('Content-Encoding') and response.headers.get('Content-Encoding').find('gzip') != -1:
-            print('接收：', response.content)
-            response.content = response.content[response.content.find(b'\x1f'):]
-            response.content = response.content[:response.content.find(b'\x02\x00\r\n0\r\n\r\n')]
+            # print('接收：', response.content)
+            if response.content.startswith(b'\x1f'):
+                pass
+            else:
+                raise ValueError('响应内容格式错误，无法识别的压缩类型')
 
-            print('开始解压缩...', response.content)
-            response.content = gzip.decompress(response.content)
-
-            print('解压缩后...', response.content)
-
-        if len(response.content) > 16 and response.content[: 16].upper().find(b'\r\n<!DOCTYPE') != -1:
-            response.content = response.content[response.content.find(b'\r\n') + 2:]
-        if response.content.endswith(b'\r\n0\r\n\r\n'):
-            response.content = response.content[:len(response.content) - 7]
-        elif response.content.endswith(b'\r\n0\r\n\r\n\r\n'):
-            response.content = response.content[:len(response.content) - 9]
+            buf = io.BytesIO(response.content)
+            gf = gzip.GzipFile(fileobj=buf)
+            response.content = gf.read()
+            # print("解压缩后：", response.content)
 
         # 响应set-cookie
         response.cookies = response.headers.get('Set-Cookie')
 
         # 响应内容编码后
         if response.headers.get('Content-Type') and response.headers.get('Content-Type').find('html') != -1:
+            if auto_encode:
+                encode = get_meta_charset(response.content)
+                # print('自动识别编码：' + encode)
             response.text = response.content.decode(encode)
 
         # 设置重定向自动跟随
@@ -203,24 +259,42 @@ def send(url, data=None, method='GET', allow_redirects=True, headers=None, timeo
                 if headers:
                     headers['Host'] = host
                 response = send(http_url, data=data, method=method, allow_redirects=allow_redirects, headers=headers, timeout=timeout, proxies=proxies, encode=encode)
-
     except Exception as e:
         raise RuntimeError(e)
-
     return response
 
 
-# GET请求
+def get_meta_charset(res_data):
+    """
+    自动识别HTML的解码方式
+    :param res_data: HTML页面内容
+    :return: 编码方式（如：‘utf-8’）
+    """
+    soup = BeautifulSoup(res_data, 'html.parser')
+    meta_lst = soup.head.find_all("meta")
+    for meta in meta_lst:
+        content = meta.get('content')
+        if content:
+            content = content.lower()
+            if 'charset=' in content:
+                return content[content.rindex('charset=') + 8:]
+
+
 def get(url, headers=None, allow_redirects=True, timeout=None, proxies=None, encode='utf-8'):
-    return send(url, headers=headers, method='GET', allow_redirects=allow_redirects, timeout=timeout, encode=encode, proxies=proxies)
+    return send(url, headers=headers, method='GET', allow_redirects=allow_redirects, timeout=timeout, encode=encode,
+                proxies=proxies)
 
 
 # POST请求
 def post(url, data=None, headers=None, allow_redirects=True, timeout=None, proxies=None, encode='utf-8'):
-    return send(url, data=data, headers=headers, method='POST', allow_redirects=allow_redirects, timeout=timeout, encode=encode, proxies=proxies)
+    return send(url, data=data, headers=headers, method='POST', allow_redirects=allow_redirects, timeout=timeout,
+                encode=encode, proxies=proxies)
 
 
 class Response:
+    """
+    响应实体，被用来封装响应信息
+    """
     headers = None
     status_code = None
     content = None
@@ -229,24 +303,24 @@ class Response:
 
 
 if __name__ == '__main__':
-    # url = "http://47.244.17.247/"
     # url = 'http://msydqstlz2kzerdg.onion/search/'
 
-    # proxies = '192.168.1.131:9050'
+    proxies = 'xx.xx.xx.xx:9050'
     # proxies = '192.168.1.131:1080'
-    proxies = None
+    # proxies = None
 
     data = {
         'p1': 'abc',
         'p2': '123',
     }
 
-    # url = 'http://5u56fjmxu63xcmbk.onion/'
-    url = 'https://www.baidu.com/'
+    url = 'http://5u56fjmxu63xcmbk.onion/'
+    # url = 'https://www.baidu.com/'
+    # url = 'https://abc.de/'
     res = get(url, timeout=60, proxies=proxies)
     # res = post(url, data=data, timeout=10, proxies=proxies)
-    print(res.headers)
-    print(res.status_code)
-    print(res.content)
-    print(res.text)
-    print(res.cookies)
+    print("打印响应头：\r\n", res.headers)
+    print("打印状态码：", res.status_code)
+    print("打印内容：\r\n", res.content)
+    print("打印字符串内容：\r\n", res.text)
+    print("打印cookies：", res.cookies)
